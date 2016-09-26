@@ -6,11 +6,10 @@ use piston_window;
 use piston_window::*;
 use std::cmp::min;
 use plotbuilder::*;
-use std;
 // use sdl2_window::Sdl2Window;
 
 
-pub struct Plot {
+pub struct PlotDrawing {
 }
 
 // pt: a point on a 1 dimensional line segment
@@ -67,7 +66,7 @@ fn draw_borders(bordercol: [f32; 4],
               g);
 }
 
-fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, color: &[f32; 4], window: &mut PistonWindow) {
+fn draw_xy(plotdata: &PlotBuilder2D, xy: &Vec<(f64, f64)>, color: &[f32; 4], window: &mut PistonWindow) {
 
     let bordercol = [0.95, 0.95, 0.95, 1.0];
     let bgcol = [1.0, 1.0, 1.0, 1.0];
@@ -121,8 +120,8 @@ fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, color: &[f32; 4], wind
     }
 }
 
-impl Plot {
-    pub fn new2d(plotdata: PlotBuilder2D) {
+impl PlotDrawing {
+    pub fn new2d(plotdata: &PlotBuilder2D) {
         let mut window: PistonWindow = WindowSettings::new("2D plot", [720, 720])
             .opengl(piston_window::OpenGL::V3_2)
             .samples(4)
@@ -130,7 +129,6 @@ impl Plot {
             .build()
             .unwrap();
 
-        let mut plotdata = plotdata;
 
         // let mut ui = conrod::UiBuilder::new().build();
         // ui.fonts.insert_from_file(plotdata.font_path).unwrap();
@@ -141,17 +139,9 @@ impl Plot {
 
         window.set_ups(60);
 
-        let mut pvs = Vec::new();
-
-        std::mem::swap(&mut plotdata.pvs, &mut pvs);
-
-        for pv in pvs.drain(..) {
-            match pv {
-                PlotVals2D::Xy(ref xy) => draw_xy(plotdata.clone(), xy, &[0.0, 1.0, 0.0, 1.0], &mut window),
-                PlotVals2D::XyColor(ref col, ref xy) => draw_xy(plotdata.clone(), &xy, col, &mut window),
-                _ => (),
-            }
+        for pv in &plotdata.pvs {
+            let plot_data = pv.get_plot();
+            draw_xy(plotdata, &plot_data.1, &plot_data.0, &mut window);
         }
-
     }
 }

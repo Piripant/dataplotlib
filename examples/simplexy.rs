@@ -9,8 +9,9 @@ fn main() {
     let xy = zip2(&x, &y);
 
     // Makes a new graph with the points
-    let pb = PlotBuilder2D::simple_xy(xy);
+    let pb = PlotBuilder2D::simple_xy(xy, [1.0, 0.0, 0.0, 1.0]);
     let mut plt = Plotter::new();
-    plt.plot2d(pb);
+    plt.plot2d(&pb);
+    plt.plot2d(&pb);
     plt.join();
 }

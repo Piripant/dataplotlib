@@ -4,46 +4,56 @@
 //! but feel free to approach this in the most ergonomic fashion for you.
 
 use std::marker::Sync;
+use std::sync::Arc;
 
 pub type PlotFn = &'static (Fn(f64) -> f64 + Sync);
 pub type AnimFn = &'static (Fn(f64, f64) -> f64 + Sync);
 
-/// `PlotVals2D` provides all of the value data for an individual plot
-/// Note: Only `Xy()` and `XyColor()` do anything at the moment
 #[derive(Clone)]
-pub enum PlotVals2D {
-    /// A simple x-y value line plot
-    Xy(Vec<(f64, f64)>),
-
-    /// A simple x-y value line plot... now in a color of your choice!
-    XyColor([f32; 4], Vec<(f64, f64)>),
-
-    /// A function that produces a y value for a given x value
-    Fun(PlotFn),
-
-    /// with color!
-    FunColor([f32; 4], PlotFn),
-
-    /// A function that produces a y value given both an x value and a time value between 0 and 1
-    AnimFun(AnimFn),
-
-    /// Probably can't figure out what this does
-    AnimFunColor([f32; 4], AnimFn),
-
-    /// A set of height values needed to produce a bar chart
-    Bars(Vec<f64>),
-
-    /// Adds a user-selected color to all bars. We probably want to be able to choose per-bar colors.
-    BarsColor([f32; 4], Vec<f64>),
+pub enum PlotStyle {
+    OnlyLines,
+    OnlyDots,
+    LinesAndDots,
 }
 
-/// `PlotBuilder2D` contains all of the necessary information to create a
-/// series of stacked 2 dimensional plots. For the moment, only provide one
-/// `PlotVals2D`, otherwise things will probably go poorly.
+// Storing the data of one plot
+pub trait PlotData : Send + Sync {
+    fn get_style (&self) -> &PlotStyle;
+    fn get_plot (&self) -> (&[f32; 4], &Vec<(f64, f64)>);
+}
+
+pub struct ColoredPlot {
+    pub xy: Vec<(f64, f64)>,
+    pub color: [f32; 4],
+    pub plot_style: PlotStyle,
+}
+
+impl PlotData for ColoredPlot {
+    fn get_style (&self) -> &PlotStyle {
+        &self.plot_style
+    }
+
+    fn get_plot (&self) -> (&[f32; 4], &Vec<(f64, f64)>) {
+        (&self.color, &self.xy)
+    }
+}
+
+// Make it thread safe
+unsafe impl Send for ColoredPlot { }
+unsafe impl Sync for ColoredPlot { }
+
+// Every graph trait will be listed in this enumerator
+// pub enum GraphTypes {
+//    PlotGraph(PlotData),
+//    BarGraph, // Yet to be implemented
+//    GraphGraph, // Yet to be implemented
+//}
+
+/// `PlotBuilder2D` contains all the higher level info of the graph (like title and labels)
 #[derive(Clone)]
 pub struct PlotBuilder2D {
-    /// **pvs** contains the **P**lot **V** alue **s**
-    pub pvs: Vec<PlotVals2D>,
+    /// **pvs** contains the actual graph values
+    pub pvs: Vec<Arc<PlotData>>,
 
     /// **min_x** optionally defines the lower x bound. If `None`, it will be auto determined.
     pub min_x: Option<f64>,
@@ -84,12 +94,15 @@ pub struct PlotBuilder2D {
 
 const DEFAULT_FONT: &'static str = "/usr/share/fonts/truetype/freefont/FreeSans.ttf";
 
+// String the data of a graph
 impl PlotBuilder2D {
     /// `simply_xy` reduces boilerplate by generating some basic defaults for the `PlotBuilder2D` struct.
     /// Once the struct is returned, it's easy enough to make adjustments.
-    pub fn simple_xy(xy: Vec<(f64, f64)>) -> PlotBuilder2D {
+    pub fn simple_xy(xy: Vec<(f64, f64)>, color: [f32; 4]) -> PlotBuilder2D {
+        let plot = ColoredPlot {xy: xy, color: color, plot_style: PlotStyle::OnlyLines};
+
         PlotBuilder2D {
-            pvs: vec![PlotVals2D::Xy(xy)],
+            pvs: vec![Arc::new(plot)],
             min_x: None,
             max_x: None,
             min_y: None,
@@ -105,42 +118,5 @@ impl PlotBuilder2D {
         }
     }
 
-    /// A slight variation of `simply_xy` which gives the graph a color.
-    /// Once the struct is returned, it's easy enough to make adjustments.
-    pub fn simple_xy_colored(xy: Vec<(f64, f64)>, color: [f32; 4]) -> PlotBuilder2D {
-        PlotBuilder2D {
-            pvs: vec![PlotVals2D::XyColor(color, xy)],
-            min_x: None,
-            max_x: None,
-            min_y: None,
-            max_y: None,
-            x_label: None,
-            y_label: None,
-            title: None,
-            y_axis: true,
-            y_gridlines: true,
-            x_axis: true,
-            x_gridlines: true,
-            font_path: DEFAULT_FONT.to_string(),
-        }
-    }
-
-    /// `simple_fun` works very similarly to `simple_xy`, except that it should not be used right now.
-    pub fn simple_fun(plotfn: PlotFn) -> PlotBuilder2D {
-        PlotBuilder2D {
-            pvs: vec![PlotVals2D::Fun(plotfn)],
-            min_x: None,
-            max_x: None,
-            min_y: None,
-            max_y: None,
-            x_label: None,
-            y_label: None,
-            title: None,
-            y_axis: true,
-            y_gridlines: true,
-            x_axis: true,
-            x_gridlines: true,
-            font_path: DEFAULT_FONT.to_string(),
-        }
-    }
+    // TODO: implement multiple plots
 }

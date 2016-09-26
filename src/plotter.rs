@@ -2,13 +2,13 @@
 //!
 //! Each plot runs asynchronously in a background thread. A `Plotter` creates and tracks these background threads.
 //!
-//! For now, `Plotter::plot2d` is the only supported plotting function. It takes a `PlotBuilder2D` containing all needed information.
+//! For now, `Plotter::plot2d` is the only supported plotting function. It takes a `GraphBuilder2D` containing all needed information.
 //!
 //! The `Plotter::join` function allows the thread that owns the `Plotter` to wait until the user has closed all open plot windows before continuing.
 
 use std::thread;
 use plotbuilder::PlotBuilder2D;
-use plot::Plot;
+use plotdrawer::PlotDrawing;
 
 pub struct Plotter {
     plots: Vec<thread::JoinHandle<()>>,
@@ -21,10 +21,14 @@ impl Plotter {
     }
 
     /// `plot2d` is currently the only supported plotting function. It takes a `PlotBuilder2D` containing all needed information.
-    pub fn plot2d(&mut self, plotbuilder: PlotBuilder2D) {
-        self.plots.push(thread::spawn(move || {
-            Plot::new2d(plotbuilder);
-        }));
+    pub fn plot2d(&mut self, graph_builder: &PlotBuilder2D) {
+        let clone = graph_builder.clone();
+
+        self.plots.push(
+            thread::spawn(move || {
+                PlotDrawing::new2d(&clone);
+            })
+        );
     }
 
     /// The `join` function allows the thread that owns the `Plotter` to wait until the user has closed all open plot windows before continuing.
@@ -48,11 +52,9 @@ mod test {
         let y = (&x).iter().map(|x| x.sin()).collect();
         let xy = zip2(&x, &y);
 
-        let pb1 = PlotBuilder2D::simple_xy(xy);
-        // let pb2 = PlotBuilder2D::simple_xy(vec![(0.3, 1.0), (25.0, 180.0)]);
+        let pb1 = GraphBuilder2D::simple_xy(xy);
         let mut plt = Plotter::new();
         plt.plot2d(pb1);
-        // plt.plot2d(pb2);
         plt.join();
     }
 }
